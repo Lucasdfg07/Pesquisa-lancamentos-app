@@ -1,0 +1,702 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Leadscore Command Center</title>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
+      :root {
+        --background: hsl(220 20% 4%);
+        --foreground: hsl(210 20% 92%);
+        --card: hsl(220 18% 8%);
+        --muted: hsl(215 12% 50%);
+        --primary: hsl(45 80% 55%);
+        --accent: hsl(180 70% 45%);
+        --border: hsl(220 15% 16%);
+        --glass: hsl(220 18% 10% / 0.62);
+        --glass-border: hsl(220 15% 20%);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        color: var(--foreground);
+        font-family: 'Inter', sans-serif;
+        background: radial-gradient(42rem 26rem at -5% -10%, hsl(45 80% 55% / 0.18), transparent 55%),
+                    radial-gradient(45rem 30rem at 105% -20%, hsl(180 70% 45% / 0.16), transparent 58%),
+                    var(--background);
+      }
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background-image:
+          linear-gradient(hsl(220 15% 16% / 0.28) 1px, transparent 1px),
+          linear-gradient(90deg, hsl(220 15% 16% / 0.28) 1px, transparent 1px);
+        background-size: 36px 36px;
+        opacity: 0.5;
+        z-index: 0;
+      }
+      body::after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background: linear-gradient(180deg, transparent 0%, hsl(45 80% 55% / 0.03) 50%, transparent 100%);
+        background-size: 100% 4px;
+        animation: scanline 8s linear infinite;
+        z-index: 0;
+      }
+      .container { position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; padding: 20px; }
+      .topbar {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+      .title {
+        margin: 0;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-size: 28px;
+        font-weight: 800;
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      .status { color: var(--muted); font-size: 12px; }
+      .spacer { flex: 1; }
+      .btn {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: hsl(220 15% 14%);
+        color: var(--foreground);
+        padding: 8px 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .btn:hover {
+        border-color: var(--primary);
+        box-shadow: 0 0 18px hsl(45 80% 55% / 0.18);
+      }
+      .tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+      .tab-btn {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: hsl(220 15% 14%);
+        color: var(--muted);
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+      .tab-btn.active {
+        color: hsl(220 20% 4%);
+        background: linear-gradient(90deg, var(--primary), hsl(35 90% 55%));
+        border-color: var(--primary);
+        font-weight: 700;
+      }
+      .tab { display: none; }
+      .tab.active { display: block; }
+      .float-panel {
+        background: var(--glass);
+        backdrop-filter: blur(14px);
+        border: 1px solid var(--glass-border);
+        border-radius: 14px;
+        box-shadow: 0 0 18px hsl(45 80% 55% / 0.08), 0 0 40px hsl(180 70% 45% / 0.05);
+      }
+      .kpis {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(180px, 1fr));
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+      .kpi {
+        padding: 12px;
+        animation: floatCard 6s ease-in-out infinite;
+      }
+      .kpi:nth-child(2) { animation-delay: 0.25s; }
+      .kpi:nth-child(3) { animation-delay: 0.45s; }
+      .kpi:nth-child(4) { animation-delay: 0.7s; }
+      .kpi .label {
+        color: var(--muted);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.7px;
+      }
+      .kpi .value {
+        font-size: 28px;
+        font-weight: 800;
+        font-family: 'JetBrains Mono', monospace;
+        color: hsl(45 80% 70%);
+      }
+      .chip-row {
+        margin-bottom: 12px;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(220px, 1fr));
+        gap: 10px;
+      }
+      .chip-group { padding: 10px; }
+      .chip-group h4 {
+        margin: 0 0 8px;
+        font-size: 11px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+      }
+      .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+      .chip {
+        border: 1px solid var(--border);
+        background: hsl(220 15% 14%);
+        color: var(--foreground);
+        border-radius: 999px;
+        padding: 4px 8px;
+        font-size: 11px;
+        cursor: pointer;
+      }
+      .chip.active {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 1px var(--primary) inset, 0 0 16px hsl(45 80% 55% / 0.2);
+      }
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(280px, 1fr));
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(280px, 1fr));
+        gap: 10px;
+      }
+      .chart-card { padding: 12px; position: relative; overflow: hidden; }
+      .chart-card::after {
+        content: "";
+        position: absolute;
+        inset: -30%;
+        background: radial-gradient(circle, hsl(45 80% 55% / 0.08), transparent 35%);
+        transform: translateY(60%);
+        pointer-events: none;
+      }
+      .chart-title {
+        margin: 0 0 8px;
+        font-size: 11px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+      .chart-wrap { display: grid; grid-template-columns: 150px 1fr; gap: 8px; align-items: center; }
+      .legend { display: flex; flex-direction: column; gap: 6px; opacity: 0.28; transition: opacity 0.2s ease; }
+      .chart-card:hover .legend { opacity: 1; }
+      .legend-item {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 6px;
+        font-size: 11px;
+        background: hsl(220 15% 13%);
+        color: var(--foreground);
+        text-align: left;
+        cursor: pointer;
+        transition: all 0.18s ease;
+      }
+      .legend-item.active { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary) inset; }
+      .legend-item:hover { border-color: hsl(180 70% 45%); }
+      .tree { margin-top: 12px; padding: 12px; }
+      .tree h2 {
+        margin: 0 0 8px;
+        font-size: 12px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.9px;
+      }
+      .tree ul { list-style: none; margin: 0; padding-left: 16px; }
+      .tree li { margin: 6px 0; border-left: 1px dashed hsl(220 15% 26%); padding-left: 10px; }
+      .node-label { font-size: 13px; }
+      .node-meta {
+        margin-left: 8px;
+        color: var(--muted);
+        font-size: 11px;
+        font-family: 'JetBrains Mono', monospace;
+      }
+      .tooltip {
+        position: fixed;
+        pointer-events: none;
+        z-index: 9999;
+        background: hsl(220 18% 8% / 0.96);
+        border: 1px solid var(--primary);
+        border-radius: 8px;
+        color: var(--foreground);
+        padding: 6px 8px;
+        font-size: 11px;
+        font-family: 'JetBrains Mono', monospace;
+        opacity: 0;
+        transform: translateY(4px);
+        transition: opacity 0.12s ease, transform 0.12s ease;
+        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+      }
+      .tooltip.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      .config-wrap { padding: 14px; }
+      .config-wrap h3 {
+        margin: 0 0 8px;
+        color: var(--primary);
+        text-transform: uppercase;
+        font-size: 12px;
+        letter-spacing: 1px;
+      }
+      .config-wrap p, .config-wrap li { color: var(--foreground); font-size: 13px; line-height: 1.5; }
+      .config-wrap code {
+        background: hsl(220 15% 14%);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 2px 6px;
+        font-family: 'JetBrains Mono', monospace;
+      }
+      .config-box {
+        padding: 10px;
+        margin-bottom: 10px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: hsl(220 18% 8% / 0.62);
+      }
+      @keyframes scanline {
+        0% { background-position: 0 0; }
+        100% { background-position: 0 100vh; }
+      }
+      @keyframes floatCard {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-3px); }
+      }
+      @media (max-width: 1024px) {
+        .kpis { grid-template-columns: repeat(2, minmax(180px, 1fr)); }
+        .chip-row { grid-template-columns: 1fr; }
+        .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="topbar">
+        <h1 class="title">Leadscore Command Center</h1>
+        <div class="spacer"></div>
+        <button class="btn" id="clearFiltersBtn">Limpar filtros</button>
+        <button class="btn" id="exportCsvBtn">Exportar CSV</button>
+      </div>
+      <div class="status" id="statusText"></div>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="overview">Visao Geral</button>
+        <button class="tab-btn" data-tab="config">Configuracao</button>
+      </div>
+
+      <section class="tab active" id="tab-overview">
+        <section class="kpis" id="summary"></section>
+        <section class="chip-row" id="dimensionFilters"></section>
+        <section class="grid-2" id="classificationCharts"></section>
+        <section class="grid-3" id="questionCharts"></section>
+        <section class="tree float-panel">
+          <h2>Arvore de Leads Filtrados</h2>
+          <div id="treeRoot"></div>
+        </section>
+      </section>
+
+      <section class="tab" id="tab-config">
+        <div class="config-wrap float-panel">
+          <div class="config-box">
+            <h3>1) Instalacao</h3>
+            <p>Na raiz do projeto, execute:</p>
+            <p><code>npm install</code></p>
+            <p><code>npm run cli -- init</code></p>
+            <p><code>npm run serve:webhook</code></p>
+          </div>
+          <div class="config-box">
+            <h3>2) Tracking correto (Pago vs Organico)</h3>
+            <ul>
+              <li>Pago: enviar UTMs (utm_source, utm_medium, utm_campaign, utm_content) e/ou xcod.</li>
+              <li>Organico: trafego sem UTMs e sem xcod.</li>
+              <li>No checkout da Hotmart, sempre enviar <code>src=session_id</code>.</li>
+            </ul>
+          </div>
+          <div class="config-box">
+            <h3>3) Quente vs Frio por campanha</h3>
+            <ul>
+              <li>Campanhas com prefixo <code>PQ</code> sao classificadas como Quente.</li>
+              <li>Campanhas com prefixo <code>PF</code> sao classificadas como Frio.</li>
+              <li>Outros nomes entram na categoria Outros.</li>
+            </ul>
+          </div>
+          <div class="config-box">
+            <h3>4) Fluxo completo de ingestao</h3>
+            <ol>
+              <li>Capturar clique na LP e salvar sessao.</li>
+              <li>Criar URL da Hotmart com <code>src</code>.</li>
+              <li>Receber webhook da compra em <code>/webhook/hotmart</code>.</li>
+              <li>Receber pesquisa em <code>/survey</code>.</li>
+              <li>Abrir o dashboard em <code>/dashboard</code>.</li>
+            </ol>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+      const FILTER_KEYS = [
+        "experience",
+        "languageSkill",
+        "englishLevel",
+        "hasInternationalInterview",
+        "internationalInterest",
+        "salaryRange",
+        "campaignId",
+        "adsetId",
+        "creativeId"
+      ];
+
+      const state = {
+        filters: {
+          experience: null,
+          languageSkill: null,
+          englishLevel: null,
+          hasInternationalInterview: null,
+          internationalInterest: null,
+          salaryRange: null,
+          campaignId: null,
+          adsetId: null,
+          creativeId: null
+        }
+      };
+
+      const PALETTE = [
+        "#f6c744", "#00b8c9", "#ff5f56", "#4ade80", "#a78bfa", "#ff9f1c", "#38bdf8", "#f97316"
+      ];
+
+      const tooltipEl = document.getElementById("tooltip");
+
+      async function loadDashboard() {
+        const params = new URLSearchParams();
+        for (const key of FILTER_KEYS) {
+          if (state.filters[key]) params.set(key, state.filters[key]);
+        }
+        updateUrl(params);
+
+        const response = await fetch(`/api/dashboard?${params.toString()}`);
+        const data = await response.json();
+
+        renderSummary(data);
+        renderDimensionFilters(data.dimensions);
+        renderClassificationCharts(data);
+        renderQuestionCharts(data.questions);
+        renderTree(data.tree);
+        renderStatus(data);
+      }
+
+      function renderSummary(data) {
+        const root = document.getElementById("summary");
+        root.innerHTML = `
+          <article class="kpi float-panel">
+            <div class="label">Leads filtrados</div>
+            <div class="value">${data.totals.filteredLeads}</div>
+          </article>
+          <article class="kpi float-panel">
+            <div class="label">Leadscore medio</div>
+            <div class="value">${data.totals.filteredLeadScoreAvg}</div>
+          </article>
+          <article class="kpi float-panel">
+            <div class="label">Hot leads (80+)</div>
+            <div class="value">${data.scoreBands.hot.count}</div>
+          </article>
+          <article class="kpi float-panel">
+            <div class="label">Top campanha</div>
+            <div class="value" style="font-size:16px;">${escapeHtml(data.insights.topCampaignName)} (${data.insights.topCampaignLeads})</div>
+          </article>
+        `;
+      }
+
+      function renderDimensionFilters(dimensions) {
+        const container = document.getElementById("dimensionFilters");
+        container.innerHTML = "";
+        container.appendChild(
+          renderChipGroup("Campanhas", dimensions.campaigns, dimensions.selectedCampaignId, "campaignId")
+        );
+        container.appendChild(
+          renderChipGroup("Conjuntos", dimensions.adsets, dimensions.selectedAdsetId, "adsetId")
+        );
+        container.appendChild(
+          renderChipGroup("Criativos", dimensions.creatives, dimensions.selectedCreativeId, "creativeId")
+        );
+      }
+
+      function renderChipGroup(title, options, selectedId, filterKey) {
+        const group = document.createElement("div");
+        group.className = "chip-group float-panel";
+        group.innerHTML = `<h4>${title}</h4><div class="chips"></div>`;
+        const chips = group.querySelector(".chips");
+        if (!options || options.length === 0) {
+          chips.innerHTML = "<span class='status'>Sem dados</span>";
+          return group;
+        }
+        options.forEach((opt) => {
+          const chip = document.createElement("button");
+          chip.className = "chip" + (selectedId === opt.id ? " active" : "");
+          chip.innerText = `${opt.name} (${opt.count})`;
+          chip.onclick = () => toggleFilter(filterKey, opt.id);
+          chips.appendChild(chip);
+        });
+        return group;
+      }
+
+      function renderClassificationCharts(data) {
+        const root = document.getElementById("classificationCharts");
+        root.innerHTML = "";
+        const questions = [
+          {
+            key: "acq",
+            title: "Captacao: Pago x Organico",
+            selected: null,
+            slices: [
+              { label: "Pago", count: data.acquisition.paid.count, proportion: data.acquisition.paid.proportion },
+              { label: "Organico", count: data.acquisition.organic.count, proportion: data.acquisition.organic.proportion }
+            ]
+          },
+          {
+            key: "heat",
+            title: "Campanhas: PQ x PF",
+            selected: null,
+            slices: [
+              { label: "Quente (PQ)", count: data.campaignHeat.quentePQ.count, proportion: data.campaignHeat.quentePQ.proportion },
+              { label: "Frio (PF)", count: data.campaignHeat.frioPF.count, proportion: data.campaignHeat.frioPF.proportion },
+              { label: "Outros", count: data.campaignHeat.other.count, proportion: data.campaignHeat.other.proportion }
+            ]
+          },
+          {
+            key: "scoreBands",
+            title: "Qualificacao",
+            selected: null,
+            slices: [
+              { label: "Hot (80+)", count: data.scoreBands.hot.count, proportion: data.scoreBands.hot.proportion },
+              { label: "Morno (40-79)", count: data.scoreBands.warm.count, proportion: data.scoreBands.warm.proportion },
+              { label: "Frio (<40)", count: data.scoreBands.cold.count, proportion: data.scoreBands.cold.proportion }
+            ]
+          },
+          {
+            key: "hotRate",
+            title: "Taxa Hot: Pago x Organico",
+            selected: null,
+            slices: [
+              { label: "Pago hot rate", count: Math.round(data.insights.paidHotRate * 100), proportion: data.insights.paidHotRate },
+              { label: "Organico hot rate", count: Math.round(data.insights.organicHotRate * 100), proportion: data.insights.organicHotRate }
+            ]
+          }
+        ];
+
+        questions.forEach((question, index) => {
+          root.appendChild(buildChartCard(`class-${index}`, question, false));
+        });
+      }
+
+      function renderQuestionCharts(questions) {
+        const root = document.getElementById("questionCharts");
+        root.innerHTML = "";
+        questions.forEach((question) => {
+          root.appendChild(buildChartCard(`question-${question.key}`, question, true));
+        });
+      }
+
+      function buildChartCard(id, question, clickable) {
+        const card = document.createElement("article");
+        card.className = "chart-card float-panel";
+        card.innerHTML = `
+          <h3 class="chart-title">${escapeHtml(question.title)}</h3>
+          <div class="chart-wrap">
+            <svg id="${id}" width="150" height="150" viewBox="0 0 150 150"></svg>
+            <div class="legend" id="${id}-legend"></div>
+          </div>
+        `;
+        drawPie(id, question, clickable);
+        drawLegend(`${id}-legend`, question, clickable);
+        return card;
+      }
+
+      function drawPie(svgId, question, clickable) {
+        const svg = document.getElementById(svgId);
+        svg.innerHTML = "";
+        const cx = 75;
+        const cy = 75;
+        const r = 60;
+        let current = -Math.PI / 2;
+        const total = question.slices.reduce((sum, s) => sum + s.count, 0);
+        if (!question.slices.length || total === 0) {
+          svg.innerHTML = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#2a2a2a" />`;
+          return;
+        }
+
+        question.slices.forEach((slice, index) => {
+          const angle = (slice.count / total) * Math.PI * 2;
+          const next = current + angle;
+          const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+          path.setAttribute("d", sectorPath(cx, cy, r, current, next));
+          path.setAttribute("fill", PALETTE[index % PALETTE.length]);
+          path.style.opacity = !question.selected || question.selected === slice.label ? "1" : "0.35";
+          path.style.cursor = clickable ? "pointer" : "default";
+          const tooltipText = `${slice.label}: ${slice.count} (${(slice.proportion * 100).toFixed(1)}%)`;
+          path.addEventListener("mouseenter", (event) => showTooltip(tooltipText, event));
+          path.addEventListener("mousemove", (event) => moveTooltip(event));
+          path.addEventListener("mouseleave", hideTooltip);
+          if (clickable) {
+            path.addEventListener("click", () => toggleFilter(question.key, slice.label));
+          }
+          svg.appendChild(path);
+          current = next;
+        });
+
+        const center = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        center.setAttribute("cx", String(cx));
+        center.setAttribute("cy", String(cy));
+        center.setAttribute("r", "24");
+        center.setAttribute("fill", "#090909");
+        center.setAttribute("stroke", "#3d330c");
+        center.setAttribute("stroke-width", "1");
+        svg.appendChild(center);
+      }
+
+      function drawLegend(targetId, question, clickable) {
+        const target = document.getElementById(targetId);
+        target.innerHTML = "";
+        question.slices.forEach((slice, index) => {
+          const btn = document.createElement("button");
+          btn.className = "legend-item" + (question.selected === slice.label ? " active" : "");
+          btn.innerHTML = `
+            <div><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${PALETTE[index % PALETTE.length]};margin-right:5px;"></span>${escapeHtml(slice.label)}</div>
+            <small>${slice.count} leads (${(slice.proportion * 100).toFixed(1)}%)</small>
+          `;
+          btn.disabled = !clickable;
+          btn.addEventListener("mouseenter", (event) => {
+            showTooltip(`${slice.label}: ${slice.count} (${(slice.proportion * 100).toFixed(1)}%)`, event);
+          });
+          btn.addEventListener("mousemove", moveTooltip);
+          btn.addEventListener("mouseleave", hideTooltip);
+          if (clickable) {
+            btn.onclick = () => toggleFilter(question.key, slice.label);
+          }
+          target.appendChild(btn);
+        });
+      }
+
+      function renderTree(nodes) {
+        const root = document.getElementById("treeRoot");
+        if (!nodes.length) {
+          root.innerHTML = "<p class='status'>Sem leads para os filtros atuais.</p>";
+          return;
+        }
+        root.innerHTML = "";
+        root.appendChild(renderNodeList(nodes));
+      }
+
+      function renderNodeList(nodes) {
+        const ul = document.createElement("ul");
+        nodes.forEach((node) => {
+          const li = document.createElement("li");
+          li.innerHTML = `<span class="node-label">${escapeHtml(node.name)}</span><span class="node-meta">Leads: ${node.leadCount} | Score total: ${node.leadScoreSum} | Score medio: ${node.leadScoreAvg}</span>`;
+          if (node.children && node.children.length) {
+            li.appendChild(renderNodeList(node.children));
+          }
+          ul.appendChild(li);
+        });
+        return ul;
+      }
+
+      function renderStatus(data) {
+        const status = document.getElementById("statusText");
+        const active = FILTER_KEYS.filter((key) => state.filters[key]);
+        if (active.length === 0) {
+          status.textContent = `Sem filtros ativos. ${data.totals.filteredLeads} leads no total.`;
+          return;
+        }
+        status.textContent = `Filtros ativos: ${active.length}. Leads: ${data.totals.filteredLeads}. Pago: ${(data.acquisition.paid.proportion * 100).toFixed(1)}%.`;
+      }
+
+      function toggleFilter(key, value) {
+        state.filters[key] = state.filters[key] === value ? null : value;
+        loadDashboard();
+      }
+
+      function updateUrl(params) {
+        const url = new URL(window.location.href);
+        url.search = params.toString();
+        window.history.replaceState({}, "", url.toString());
+      }
+
+      function bootstrapFiltersFromUrl() {
+        const url = new URL(window.location.href);
+        FILTER_KEYS.forEach((key) => {
+          state.filters[key] = url.searchParams.get(key) || null;
+        });
+      }
+
+      function sectorPath(cx, cy, r, start, end) {
+        const x1 = cx + r * Math.cos(start);
+        const y1 = cy + r * Math.sin(start);
+        const x2 = cx + r * Math.cos(end);
+        const y2 = cy + r * Math.sin(end);
+        const largeArc = end - start > Math.PI ? 1 : 0;
+        return `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+      }
+
+      function showTooltip(text, event) {
+        tooltipEl.textContent = text;
+        tooltipEl.classList.add("visible");
+        moveTooltip(event);
+      }
+
+      function moveTooltip(event) {
+        tooltipEl.style.left = `${event.clientX + 12}px`;
+        tooltipEl.style.top = `${event.clientY + 12}px`;
+      }
+
+      function hideTooltip() {
+        tooltipEl.classList.remove("visible");
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;");
+      }
+
+      document.querySelectorAll(".tab-btn").forEach((button) => {
+        button.addEventListener("click", () => {
+          document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+          document.querySelectorAll(".tab").forEach((tab) => tab.classList.remove("active"));
+          button.classList.add("active");
+          document.getElementById(`tab-${button.dataset.tab}`).classList.add("active");
+        });
+      });
+
+      document.getElementById("clearFiltersBtn").addEventListener("click", () => {
+        FILTER_KEYS.forEach((key) => (state.filters[key] = null));
+        loadDashboard();
+      });
+
+      document.getElementById("exportCsvBtn").addEventListener("click", () => {
+        const params = new URLSearchParams();
+        FILTER_KEYS.forEach((key) => {
+          if (state.filters[key]) params.set(key, state.filters[key]);
+        });
+        window.open(`/api/dashboard.csv?${params.toString()}`, "_blank");
+      });
+
+      bootstrapFiltersFromUrl();
+      loadDashboard();
+    </script>
+  </body>
+</html>

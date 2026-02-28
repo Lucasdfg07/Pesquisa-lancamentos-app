@@ -1,0 +1,32 @@
+{
+  "name": "leadscore-dash",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CLI-first local app for Hotmart leadscore and ad attribution",
+  "type": "module",
+  "bin": {
+    "leadscore": "./dist/bin/leadscore.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --config vitest.config.ts",
+    "cli": "tsx packages/cli/src/index.ts",
+    "serve:webhook": "tsx packages/server/src/index.ts",
+    "seed:sim": "tsx scripts/seed-simulated-attribution.ts",
+    "frontend:zip:install": "npm install --prefix tmp_ref/lovable",
+    "frontend:zip:build": "npm run build --prefix tmp_ref/lovable",
+    "frontend:zip:dev": "npm run dev --prefix tmp_ref/lovable"
+  },
+  "dependencies": {
+  },
+  "optionalDependencies": {
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.8"
+  }
+}
